@@ -8,111 +8,117 @@
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background-color: #f0f2f5;
+      background-color: #f9f9f9;
       padding: 20px;
+      margin: 0;
     }
     h1 {
       text-align: center;
-      color: #2d3436;
       margin-bottom: 20px;
+      color: #333;
     }
     .controls {
       text-align: center;
       margin-bottom: 20px;
     }
-    input, select, button {
+    .controls input, .controls select, .controls button {
       padding: 8px;
       margin: 5px;
-      border-radius: 5px;
       border: 1px solid #ccc;
-      font-size: 14px;
+      border-radius: 5px;
     }
-    .clear-btn {
-      background-color: #d63031;
+    .controls button {
+      background-color: #4CAF50;
       color: white;
       border: none;
     }
     .timetable {
       display: grid;
-      grid-template-columns: 80px repeat(7, 1fr);
+      grid-template-columns: 100px repeat(7, 1fr);
+      border: 1px solid #ccc;
       background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
     .timetable div {
       padding: 10px;
-      border: 1px solid #ecf0f1;
+      border: 1px solid #eee;
       text-align: center;
+      position: relative;
     }
     .header {
-      background-color: #0984e3;
+      background-color: #1976d2;
       color: white;
       font-weight: bold;
     }
     .task {
-      background-color: #dfe6e9;
+      background-color: #e3f2fd;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 6px;
-      cursor: grab;
+      cursor: move;
+    }
+    .completed {
+      background-color: #c8e6c9 !important;
+      text-decoration: line-through;
     }
     .task span {
       flex: 1;
       text-align: left;
+      padding-left: 4px;
     }
-    .delete-btn {
-      background: transparent;
+    .actions {
+      display: flex;
+      gap: 4px;
+    }
+    .actions button {
+      background: none;
       border: none;
-      color: #d63031;
+      cursor: pointer;
       font-size: 16px;
-      cursor: pointer;
     }
-    .empty {
-      background-color: #f9f9f9;
-      cursor: pointer;
+    .date-row {
+      background-color: #f1f1f1;
+      font-size: 12px;
     }
-
-    /* Modal */
-    .modal {
+    @media (max-width: 768px) {
+      .timetable {
+        font-size: 12px;
+        grid-template-columns: 80px repeat(7, 1fr);
+      }
+      .controls input, .controls select, .controls button {
+        width: 100%;
+        box-sizing: border-box;
+      }
+    }
+    #modal {
       display: none;
       position: fixed;
       top: 30%;
       left: 50%;
-      transform: translate(-50%, -30%);
+      transform: translate(-50%, -50%);
       background: white;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      z-index: 999;
+      z-index: 1000;
     }
-    .modal h3 {
-      margin-top: 0;
+    #modal p {
+      margin-bottom: 10px;
     }
-    .modal-buttons {
-      margin-top: 10px;
-      text-align: right;
-    }
-    .modal-buttons button {
-      margin-left: 10px;
+    #modal button {
+      margin: 5px;
+      padding: 6px 12px;
     }
     #overlay {
-      position: fixed;
       display: none;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.3);
-      z-index: 998;
-    }
-
-    @media (max-width: 600px) {
-      .timetable {
-        font-size: 12px;
-      }
-      .modal {
-        width: 90%;
-        top: 40%;
-      }
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4);
+      z-index: 999;
     }
   </style>
 </head>
@@ -121,131 +127,183 @@
 <h1>Deadline</h1>
 
 <div class="controls">
-  <input type="number" id="slot" min="1" placeholder="Thứ tự (bỏ trống để tự tăng)">
-  <select id="day">
+  <label>Ngày bắt đầu tuần:</label>
+  <input type="date" id="startDate">
+  <input type="text" id="taskInput" placeholder="Nội dung công việc">
+  <select id="daySelect">
+    <option value="0">Chủ Nhật</option>
     <option value="1">Thứ 2</option>
     <option value="2">Thứ 3</option>
     <option value="3">Thứ 4</option>
     <option value="4">Thứ 5</option>
     <option value="5">Thứ 6</option>
     <option value="6">Thứ 7</option>
-    <option value="7">Chủ nhật</option>
   </select>
-  <input type="text" id="task" placeholder="Nội dung việc">
-  <button onclick="addTask()">Thêm / Cập nhật</button>
-  <button class="clear-btn" onclick="showModal()">Xoá tất cả</button>
+  <button onclick="addTask()">Thêm</button>
 </div>
 
-<div class="timetable" id="timetable"></div>
+<div id="timetable" class="timetable"></div>
 
-<!-- Modal -->
 <div id="overlay"></div>
-<div id="modal" class="modal">
-  <h3>Bạn có chắc muốn xoá toàn bộ công việc?</h3>
-  <div class="modal-buttons">
-    <button onclick="hideModal()">Huỷ</button>
-    <button onclick="clearAll()" style="background-color: #d63031; color: white;">Xoá</button>
-  </div>
+<div id="modal">
+  <p id="modalText">Bạn có chắc chắn?</p>
+  <button onclick="confirmModal(true)">Có</button>
+  <button onclick="confirmModal(false)">Không</button>
 </div>
 
 <script>
-const timetableEl = document.getElementById('timetable');
-let data = JSON.parse(localStorage.getItem('timetableData')) || [];
-const cols = 7;
+let data = {};
+let currentWeek = "";
 
-while (data.length < 5) {
-  data.push(Array(cols).fill(''));
+function formatDate(date) {
+  return date.toISOString().split("T")[0];
+}
+
+function getDatesOfWeek(startDateStr) {
+  const start = new Date(startDateStr);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return formatDate(d);
+  });
+}
+
+function showModal(message, callback) {
+  document.getElementById("modalText").innerText = message;
+  document.getElementById("overlay").style.display = "block";
+  document.getElementById("modal").style.display = "block";
+  window.modalCallback = callback;
+}
+
+function confirmModal(choice) {
+  document.getElementById("overlay").style.display = "none";
+  document.getElementById("modal").style.display = "none";
+  if (window.modalCallback) window.modalCallback(choice);
 }
 
 function render() {
-  const dayNames = ["Thứ tự", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"];
-  timetableEl.innerHTML = dayNames.map(name => `<div class="header">${name}</div>`).join("");
+  const container = document.getElementById("timetable");
+  container.innerHTML = "";
+  const start = document.getElementById("startDate").value;
+  if (!start) return;
+  currentWeek = start;
+  const weekDates = getDatesOfWeek(start);
+  const headerDays = ["Chủ Nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
 
-  data.forEach((row, i) => {
-    timetableEl.innerHTML += `<div class="header">${i + 1}</div>`;
-    for (let j = 0; j < cols; j++) {
-      const task = row[j];
-      timetableEl.innerHTML += `
-        <div class="${task ? 'task' : 'empty'}" draggable="true" ondragstart="onDragStart(event, ${i}, ${j})" ondrop="onDrop(event, ${i}, ${j})" ondragover="event.preventDefault()" onclick="editTask(${i}, ${j})">
-          ${task ? `<span>${task}</span><button class="delete-btn" onclick="event.stopPropagation(); deleteTask(${i}, ${j})">×</button>` : ''}
+  container.innerHTML += `<div class="header">Thứ tự</div>`;
+  headerDays.forEach(d => container.innerHTML += `<div class="header">${d}</div>`);
+  container.innerHTML += `<div class="date-row">Ngày</div>`;
+  weekDates.forEach(d => container.innerHTML += `<div class="date-row">${d}</div>`);
+
+  const weekData = data[start] || Array.from({ length: 5 }, () => Array(7).fill(null));
+
+  weekData.forEach((row, i) => {
+    container.innerHTML += `<div class="header">${i + 1}</div>`;
+    row.forEach((cell, j) => {
+      if (cell) {
+        container.innerHTML += `
+        <div class="task ${cell.done ? 'completed' : ''}" draggable="true"
+          ondragstart="drag(event, ${i}, ${j})" ondrop="drop(event, ${i}, ${j})" ondragover="allowDrop(event)">
+          <span ondblclick="editTask(${i}, ${j})">${cell.text}</span>
+          <div class="actions">
+            <button onclick="toggleDone(${i}, ${j})">✅</button>
+            <button onclick="confirmDelete(${i}, ${j})">❌</button>
+          </div>
         </div>`;
-    }
+      } else {
+        container.innerHTML += `<div class="empty" ondrop="drop(event, ${i}, ${j})" ondragover="allowDrop(event)"></div>`;
+      }
+    });
   });
-  localStorage.setItem('timetableData', JSON.stringify(data));
 }
 
 function addTask() {
-  let slot = parseInt(document.getElementById('slot').value);
-  const day = parseInt(document.getElementById('day').value);
-  const task = document.getElementById('task').value.trim();
-  if (!day || !task) {
-    alert('Vui lòng nhập đủ thông tin.');
-    return;
+  const task = document.getElementById("taskInput").value.trim();
+  const day = parseInt(document.getElementById("daySelect").value);
+  const start = document.getElementById("startDate").value;
+  if (!task || !start) return alert("Nhập nội dung và chọn ngày!");
+
+  if (!data[start]) {
+    data[start] = Array.from({ length: 5 }, () => Array(7).fill(null));
   }
 
-  if (!slot || slot < 1) {
-    slot = data.findIndex(row => row[day - 1] === '');
-    if (slot === -1) slot = data.length;
-    slot += 1;
-  }
-
-  while (data.length < slot) {
-    data.push(Array(cols).fill(''));
-  }
-
-  data[slot - 1][day - 1] = task;
-  render();
-  document.getElementById('slot').value = '';
-  document.getElementById('task').value = '';
-}
-
-function deleteTask(i, j) {
-  data[i][j] = '';
-  render();
-}
-
-function clearAll() {
-  data = Array.from({ length: 5 }, () => Array(cols).fill(''));
-  hideModal();
-  render();
-}
-
-function editTask(i, j) {
-  if (data[i][j]) {
-    const newText = prompt("Chỉnh sửa nội dung công việc:", data[i][j]);
-    if (newText !== null) {
-      data[i][j] = newText.trim();
-      render();
+  const week = data[start];
+  let added = false;
+  for (let i = 0; i < 5; i++) {
+    if (!week[i][day]) {
+      week[i][day] = { text: task, done: false };
+      added = true;
+      break;
     }
   }
+
+  if (!added) alert("Hết chỗ trống cho ngày này.");
+  else {
+    localStorage.setItem("todoData", JSON.stringify(data));
+    document.getElementById("taskInput").value = "";
+    render();
+  }
 }
 
-// Modal control
-function showModal() {
-  document.getElementById('overlay').style.display = 'block';
-  document.getElementById('modal').style.display = 'block';
+function editTask(row, col) {
+  const start = document.getElementById("startDate").value;
+  const newText = prompt("Chỉnh sửa nội dung:", data[start][row][col].text);
+  if (newText !== null) {
+    data[start][row][col].text = newText.trim();
+    localStorage.setItem("todoData", JSON.stringify(data));
+    render();
+  }
 }
-function hideModal() {
-  document.getElementById('overlay').style.display = 'none';
-  document.getElementById('modal').style.display = 'none';
+
+function toggleDone(row, col) {
+  const start = document.getElementById("startDate").value;
+  data[start][row][col].done = !data[start][row][col].done;
+  localStorage.setItem("todoData", JSON.stringify(data));
+  render();
+}
+
+function confirmDelete(row, col) {
+  showModal("Bạn có chắc muốn xoá?", (ok) => {
+    if (ok) {
+      const start = document.getElementById("startDate").value;
+      data[start][row][col] = null;
+      localStorage.setItem("todoData", JSON.stringify(data));
+      render();
+    }
+  });
 }
 
 // Kéo thả
-let dragged = null;
-function onDragStart(event, i, j) {
-  dragged = { i, j };
+let dragSrc = null;
+function drag(ev, row, col) {
+  dragSrc = { row, col };
 }
-function onDrop(event, i, j) {
-  if (dragged) {
-    const temp = data[i][j];
-    data[i][j] = data[dragged.i][dragged.j];
-    data[dragged.i][dragged.j] = temp;
-    render();
-    dragged = null;
-  }
+function allowDrop(ev) {
+  ev.preventDefault();
+}
+function drop(ev, row, col) {
+  if (!dragSrc) return;
+  const start = document.getElementById("startDate").value;
+  const temp = data[start][row][col];
+  data[start][row][col] = data[start][dragSrc.row][dragSrc.col];
+  data[start][dragSrc.row][dragSrc.col] = temp;
+  dragSrc = null;
+  localStorage.setItem("todoData", JSON.stringify(data));
+  render();
 }
 
-render();
+// Khởi động
+document.getElementById("startDate").addEventListener("change", () => render());
+
+window.onload = function () {
+  const saved = localStorage.getItem("todoData");
+  if (saved) data = JSON.parse(saved);
+  const today = new Date();
+  const monday = new Date(today.setDate(today.getDate() - today.getDay()));
+  document.getElementById("startDate").value = formatDate(monday);
+  render();
+};
 </script>
+
 </body>
 </html>

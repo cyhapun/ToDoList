@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lịch Việc Cần Làm</title>
+  <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2721/2721291.png" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f2f5;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #2d3436;
+      margin-bottom: 20px;
+    }
+    .controls {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input, select, button {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    .clear-btn {
+      background-color: #d63031;
+      color: white;
+      border: none;
+    }
+    .timetable {
+      display: grid;
+      grid-template-columns: 80px repeat(7, 1fr);
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .timetable div {
+      padding: 10px;
+      border: 1px solid #ecf0f1;
+      text-align: center;
+    }
+    .header {
+      background-color: #0984e3;
+      color: white;
+      font-weight: bold;
+    }
+    .task {
+      background-color: #dfe6e9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      cursor: grab;
+    }
+    .task span {
+      flex: 1;
+      text-align: left;
+    }
+    .delete-btn {
+      background: transparent;
+      border: none;
+      color: #d63031;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .empty {
+      background-color: #f9f9f9;
+      cursor: pointer;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -30%);
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 999;
+    }
+    .modal h3 {
+      margin-top: 0;
+    }
+    .modal-buttons {
+      margin-top: 10px;
+      text-align: right;
+    }
+    .modal-buttons button {
+      margin-left: 10px;
+    }
+    #overlay {
+      position: fixed;
+      display: none;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 998;
+    }
+
+    @media (max-width: 600px) {
+      .timetable {
+        font-size: 12px;
+      }
+      .modal {
+        width: 90%;
+        top: 40%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Lịch Việc Cần Làm</h1>
+
+<div class="controls">
+  <input type="number" id="slot" min="1" placeholder="Thứ tự (bỏ trống để tự tăng)">
+  <select id="day">
+    <option value="1">Thứ 2</option>
+    <option value="2">Thứ 3</option>
+    <option value="3">Thứ 4</option>
+    <option value="4">Thứ 5</option>
+    <option value="5">Thứ 6</option>
+    <option value="6">Thứ 7</option>
+    <option value="7">Chủ nhật</option>
+  </select>
+  <input type="text" id="task" placeholder="Nội dung việc">
+  <button onclick="addTask()">Thêm / Cập nhật</button>
+  <button class="clear-btn" onclick="showModal()">Xoá tất cả</button>
+</div>
+
+<div class="timetable" id="timetable"></div>
+
+<!-- Modal -->
+<div id="overlay"></div>
+<div id="modal" class="modal">
+  <h3>Bạn có chắc muốn xoá toàn bộ công việc?</h3>
+  <div class="modal-buttons">
+    <button onclick="hideModal()">Huỷ</button>
+    <button onclick="clearAll()" style="background-color: #d63031; color: white;">Xoá</button>
+  </div>
+</div>
+
+<script>
+const timetableEl = document.getElementById('timetable');
+let data = JSON.parse(localStorage.getItem('timetableData')) || [];
+const cols = 7;
+
+while (data.length < 5) {
+  data.push(Array(cols).fill(''));
+}
+
+function render() {
+  const dayNames = ["Thứ tự", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"];
+  timetableEl.innerHTML = dayNames.map(name => `<div class="header">${name}</div>`).join("");
+
+  data.forEach((row, i) => {
+    timetableEl.innerHTML += `<div class="header">${i + 1}</div>`;
+    for (let j = 0; j < cols; j++) {
+      const task = row[j];
+      timetableEl.innerHTML += `
+        <div class="${task ? 'task' : 'empty'}" draggable="true" ondragstart="onDragStart(event, ${i}, ${j})" ondrop="onDrop(event, ${i}, ${j})" ondragover="event.preventDefault()" onclick="editTask(${i}, ${j})">
+          ${task ? `<span>${task}</span><button class="delete-btn" onclick="event.stopPropagation(); deleteTask(${i}, ${j})">×</button>` : ''}
+        </div>`;
+    }
+  });
+  localStorage.setItem('timetableData', JSON.stringify(data));
+}
+
+function addTask() {
+  let slot = parseInt(document.getElementById('slot').value);
+  const day = parseInt(document.getElementById('day').value);
+  const task = document.getElementById('task').value.trim();
+  if (!day || !task) {
+    alert('Vui lòng nhập đủ thông tin.');
+    return;
+  }
+
+  if (!slot || slot < 1) {
+    slot = data.findIndex(row => row[day - 1] === '');
+    if (slot === -1) slot = data.length;
+    slot += 1;
+  }
+
+  while (data.length < slot) {
+    data.push(Array(cols).fill(''));
+  }
+
+  data[slot - 1][day - 1] = task;
+  render();
+  document.getElementById('slot').value = '';
+  document.getElementById('task').value = '';
+}
+
+function deleteTask(i, j) {
+  data[i][j] = '';
+  render();
+}
+
+function clearAll() {
+  data = Array.from({ length: 5 }, () => Array(cols).fill(''));
+  hideModal();
+  render();
+}
+
+function editTask(i, j) {
+  if (data[i][j]) {
+    const newText = prompt("Chỉnh sửa nội dung công việc:", data[i][j]);
+    if (newText !== null) {
+      data[i][j] = newText.trim();
+      render();
+    }
+  }
+}
+
+// Modal control
+function showModal() {
+  document.getElementById('overlay').style.display = 'block';
+  document.getElementById('modal').style.display = 'block';
+}
+function hideModal() {
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('modal').style.display = 'none';
+}
+
+// Kéo thả
+let dragged = null;
+function onDragStart(event, i, j) {
+  dragged = { i, j };
+}
+function onDrop(event, i, j) {
+  if (dragged) {
+    const temp = data[i][j];
+    data[i][j] = data[dragged.i][dragged.j];
+    data[dragged.i][dragged.j] = temp;
+    render();
+    dragged = null;
+  }
+}
+
+render();
+</script>
+</body>
+</html>
